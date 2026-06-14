@@ -12,6 +12,20 @@ intents.voice_states = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
+import random
+import discord
+from discord import app_commands
+from discord.ext import commands
+import os
+
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+intents = discord.Intents.default()
+intents.voice_states = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+
 @bot.event
 async def on_ready():
     await bot.tree.sync()
@@ -21,22 +35,63 @@ async def on_ready():
 # =========================
 # 음성채널 감시
 # =========================
+
+# 특정 유저 전용 문구 (디스코드 유저 ID: {문구 리스트})
+SPECIAL_JOIN_MESSAGES = {
+    # 123456789012345678: ["특별 입장 문구1 {name}", "특별 입장 문구2 {name}"],
+    215383922886836225: ["야릇한 {name}의 등장", "{name}엉덩이 만지기"],
+    259535729728815114: ["야생의 네모가 나타났다!", "모두 대학원생을 조심해"]
+}
+SPECIAL_LEAVE_MESSAGES = {
+    # 123456789012345678: ["특별 퇴장 문구1 {name}", "특별 퇴장 문구2 {name}"],
+}
+
+JOIN_MESSAGES = [
+    "🚨 {name} 등장. 다들 숨으세요.",
+    "😱 {name} 나타남. 긴장하세요.",
+    "🎺 {name} 입장. 박수 쳐주세요.",
+    "👀 {name} 왔다. 조심해.",
+    "🔔 {name} 접속. 오늘도 수고.",
+]
+
+LEAVE_MESSAGES = [
+    "🎉 {name} 퇴장. 평화가 찾아왔습니다.",
+    "😌 {name} 나갔다. 이제 편하다.",
+    "👋 {name} 퇴장. 잘 가요~",
+    "🕊 {name} 사라짐. 고요함이 흐릅니다.",
+    "🚪 {name} 퇴장. 문 닫아줘.",
+]
+
+MOVE_MESSAGES = [
+    "🔄 {name} 이동: {before} → {after}",
+    "🏃 {name} 도망침: {before} → {after}",
+    "🚶 {name} 자리 옮김: {before} → {after}",
+]
+
+
 @bot.event
 async def on_voice_state_update(member, before, after):
-    log_channel = discord.utils.get(member.guild.text_channels, name="채팅방")
+    log_channel = discord.utils.get(member.guild.text_channels, name="참가기록")
     if log_channel is None:
         return
 
     if before.channel is None and after.channel is not None:
-        await log_channel.send(f"🚨 {member.display_name} 등장. 다들 숨으세요.")
+        pool = SPECIAL_JOIN_MESSAGES.get(member.id, JOIN_MESSAGES)
+        msg = random.choice(pool).format(name=member.display_name)
+        await log_channel.send(msg)
 
     elif before.channel is not None and after.channel is None:
-        await log_channel.send(f"🎉 {member.display_name} 퇴장. 평화가 찾아왔습니다.")
+        pool = SPECIAL_LEAVE_MESSAGES.get(member.id, LEAVE_MESSAGES)
+        msg = random.choice(pool).format(name=member.display_name)
+        await log_channel.send(msg)
 
     elif before.channel != after.channel:
-        await log_channel.send(
-            f"🔄 {member.display_name} 이동: {before.channel.name} → {after.channel.name}"
+        msg = random.choice(MOVE_MESSAGES).format(
+            name=member.display_name,
+            before=before.channel.name,
+            after=after.channel.name
         )
+        await log_channel.send(msg)
 
 
 # =========================
